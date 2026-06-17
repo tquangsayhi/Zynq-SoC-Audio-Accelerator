@@ -30,8 +30,7 @@ The system bridges the Programmable Logic (PL) and the Processing System (PS) of
 ### 2. Software Execution
 Run the provided Python script to flash the FPGA, allocate memory, and process the audio:
 
-```python
-import numpy as np
+```import numpy as np
 from scipy.io import wavfile
 from pynq import Overlay, allocate
 from IPython.display import Audio
@@ -42,7 +41,8 @@ dma = overlay.axi_dma_0
 
 # 2. Load Audio
 sample_rate, audio_data = wavfile.read("input.wav")
-if len(audio_data.shape) > 1: audio_data = audio_data[:, 0] # Convert to Mono
+if len(audio_data.shape) > 1: 
+    audio_data = audio_data[:, 0] # Convert to Mono
 audio_data = audio_data.astype(np.int16)
 
 # 3. Allocate Physical Memory
@@ -51,14 +51,18 @@ input_buffer = allocate(shape=(num_samples,), dtype=np.int16)
 output_buffer = allocate(shape=(num_samples,), dtype=np.int16)
 np.copyto(input_buffer, audio_data)
 
-# 4. Stream via DMA (Chunked to bypass 14-bit limit)
-chunk_size = 8000 
-for i in range(0, num_samples, chunk_size):
-    end = min(i + chunk_size, num_samples)
-    dma.recvchannel.transfer(output_buffer[i:end])
-    dma.sendchannel.transfer(input_buffer[i:end])
-    dma.sendchannel.wait()
-    dma.recvchannel.wait()
+# 4. Stream via DMA (Single Bulk Transfer)
+print("Sending the entire audio file to the FPGA...")
+
+# Open the receive bucket first, then fire the send hose
+dma.recvchannel.transfer(output_buffer)
+dma.sendchannel.transfer(input_buffer)
+
+# Sleep until the hardware fires the completion interrupt
+dma.sendchannel.wait()
+dma.recvchannel.wait()
+
+print("Hardware filtering complete!")
 
 # 5. Play Hardware Output
 display(Audio(output_buffer, rate=sample_rate))
