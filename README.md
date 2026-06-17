@@ -30,6 +30,7 @@ The system bridges the Programmable Logic (PL) and the Processing System (PS) of
 ### 2. Software Execution
 Run the provided Python script to flash the FPGA, allocate memory, and process the audio:
 
+```python
 import numpy as np
 from scipy.io import wavfile
 from pynq import Overlay, allocate
